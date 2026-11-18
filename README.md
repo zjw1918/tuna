@@ -20,9 +20,9 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 
 ## 课程地图
 
-| 期 | 内容 | 代码 |
-|---|---|---|
-| E01 | 猜下一个字 | `lessons/get_texts.py`（下载课本）、`lessons/e01_bigram.py` |
+| 期 | 内容 | 视频 | 代码 |
+|---|---|---|---|
+| E01 | 猜下一个字 | [B 站](https://www.bilibili.com/video/BV15tsm6dEvZ) | `lessons/get_texts.py`（下载课本）、`lessons/e01_bigram.py` |
 
 ## 跑起来
 

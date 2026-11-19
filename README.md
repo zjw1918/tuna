@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e01          # 回到某一期的代码
+git checkout e02          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -23,6 +23,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | 期 | 内容 | 视频 | 代码 |
 |---|---|---|---|
 | E01 | 猜下一个字 | [B 站](https://www.bilibili.com/video/BV15tsm6dEvZ) | `lessons/get_texts.py`（下载课本）、`lessons/e01_bigram.py` |
+| E02 | 机器是怎么“学”的 | 即将上线 | `lessons/e02_autograd.py`（四十行自动求导 + PyTorch 学出 E01 的表） |
 
 ## 跑起来
 
@@ -32,6 +33,14 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 uv run python lessons/get_texts.py ~/tuna-data/texts                     # 下载《西游记》（和以后用的全唐诗）
 uv run python lessons/e01_bigram.py ~/tuna-data/texts/xiyouji.txt        # 数数、抽字、算惊讶值
 uv run python lessons/e01_bigram.py ~/tuna-data/texts/xiyouji.txt 0.3    # 换个温度：0.3 / 1 / 3
+```
+
+### E02 · 机器是怎么“学”的
+
+```sh
+uv run python lessons/e02_autograd.py                                    # 拟合直线：100 步找到 y = 2x + 1
+uv run python lessons/e02_autograd.py --lr 0.35                          # 学习率太大：小球飞出山谷
+uv run python lessons/e02_autograd.py ~/tuna-data/texts/xiyouji.txt      # 再用 PyTorch 学一张 4,433 × 4,433 的表
 ```
 
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。

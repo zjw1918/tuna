@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e02          # 回到某一期的代码
+git checkout e03          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -24,6 +24,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 |---|---|---|---|
 | E01 | 猜下一个字 | [B 站](https://www.bilibili.com/video/BV15tsm6dEvZ) | `lessons/get_texts.py`（下载课本）、`lessons/e01_bigram.py` |
 | E02 | 机器是怎么“学”的 | [B 站](https://www.bilibili.com/video/BV1zMs861ERr) | `lessons/e02_autograd.py`（四十行自动求导 + PyTorch 学出 E01 的表） |
+| E03 | 给语言切积木 | [B 站](https://www.bilibili.com/video/BV1aTsh6KETc) | `lessons/e03_bpe.py`（手写字节级 BPE）、`scripts/train_tokenizer.py`、`tokenizer/tokenizer.json`（成品词表） |
 
 ## 跑起来
 
@@ -43,7 +44,25 @@ uv run python lessons/e02_autograd.py --lr 0.35                          # 学�
 uv run python lessons/e02_autograd.py ~/tuna-data/texts/xiyouji.txt      # 再用 PyTorch 学一张 4,433 × 4,433 的表
 ```
 
+### E03 · 给语言切积木
+
+```sh
+uv run python lessons/e03_bpe.py ~/tuna-data/texts/xiyouji.txt              # 手写 BPE：500 次合并，先分段
+uv run python lessons/e03_bpe.py ~/tuna-data/texts/xiyouji.txt --no-split   # 不分段：逗号粘上半个字
+# 正式词表：先下载 8.3 GB 现代中文语料（约 12 分钟，后面几期接着用）
+uv run hf download jingyaogong/minimind_dataset pretrain_t2t.jsonl --repo-type dataset --local-dir ~/tuna-data
+uv run python scripts/train_tokenizer.py ~/tuna-data/pretrain_t2t.jsonl ~/tuna-runs/tok                # 6,400 格，约 3 分钟
+uv run python scripts/train_tokenizer.py ~/tuna-data/pretrain_t2t.jsonl ~/tuna-runs/tok1k --vocab 1000  # 换个大小比一比
+# 不想下载：仓库里的 tokenizer/tokenizer.json 和自己训出来的逐字节相同
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
+
+Hugging Face 连不上时，先设镜像再跑 `hf download`：
+
+```sh
+export HF_ENDPOINT=https://hf-mirror.com
+```
 
 ## 致谢
 

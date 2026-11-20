@@ -27,7 +27,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E03 | 给语言切积木 | [B 站](https://www.bilibili.com/video/BV1aTsh6KETc) | `lessons/e03_bpe.py`（手写字节级 BPE）、`scripts/train_tokenizer.py`、`tokenizer/tokenizer.json`（成品词表） |
 | E04 | 春天挨着秋天 | [B 站](https://www.bilibili.com/video/BV1mTsB6EE4B) | `lessons/e04_mlp.py`（词嵌入 + MLP，在全唐诗上训练）、`lessons/common.py`（取数据、训练循环、生成） |
 | E05 | 注意力该看谁 | [B 站](https://www.bilibili.com/video/BV1Qfsq69ENU) | `lessons/e05_attention.py`（四个头的注意力：查询、标签、内容，因果掩码，位置表） |
-| E06 | 一层层盖上去 | 即将上线 | `tuna/model.py`（整个 Tuna：RMSNorm、RoPE、GQA 注意力、SwiGLU、残差、共用词表、top-k 生成）、`lessons/e06_transformer.py`（小号 Tuna 写诗 + 拆零件实验） |
+| E06 | 一层层盖上去 | [B 站](https://www.bilibili.com/video/BV1HZsi6qE7P) | `tuna/model.py`（整个 Tuna：RMSNorm、RoPE、GQA 注意力、SwiGLU、残差、共用词表、top-k 生成）、`lessons/e06_transformer.py`（小号 Tuna 写诗 + 拆零件实验） |
 
 ## 跑起来
 

@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e04          # 回到某一期的代码
+git checkout e05          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -26,6 +26,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E02 | 机器是怎么“学”的 | [B 站](https://www.bilibili.com/video/BV1zMs861ERr) | `lessons/e02_autograd.py`（四十行自动求导 + PyTorch 学出 E01 的表） |
 | E03 | 给语言切积木 | [B 站](https://www.bilibili.com/video/BV1aTsh6KETc) | `lessons/e03_bpe.py`（手写字节级 BPE）、`scripts/train_tokenizer.py`、`tokenizer/tokenizer.json`（成品词表） |
 | E04 | 春天挨着秋天 | [B 站](https://www.bilibili.com/video/BV1mTsB6EE4B) | `lessons/e04_mlp.py`（词嵌入 + MLP，在全唐诗上训练）、`lessons/common.py`（取数据、训练循环、生成） |
+| E05 | 注意力该看谁 | [B 站](https://www.bilibili.com/video/BV1Qfsq69ENU) | `lessons/e05_attention.py`（四个头的注意力：查询、标签、内容，因果掩码，位置表） |
 
 ## 跑起来
 
@@ -63,6 +64,14 @@ uv run python scripts/train_tokenizer.py ~/tuna-data/pretrain_t2t.jsonl ~/tuna-r
 uv run python lessons/e04_mlp.py ~/tuna-data/texts/tang.txt tokenizer/tokenizer.json ~/tuna-runs/e04
 # 先正常训练（约 1 分钟）：接诗、找「和春最像的字」；再跑过拟合实验：见过的诗一字不差背出来
 # 试试把 e04_mlp.py 里 MLP 的 dim=64 改成 16 或 256，「春」最像的还是不是「秋」？
+```
+
+### E05 · 注意力该看谁
+
+```sh
+uv run python lessons/e05_attention.py ~/tuna-data/texts/tang.txt tokenizer/tokenizer.json ~/tuna-runs/e05
+# 先故意不加掩码训 1500 步（只会抄答案），再加上掩码正经训 6000 步（约 1 分钟），最后存下一首诗的注意力图
+# 试试把 e05_attention.py 里 heads=4 改成 1 或 16，再画一画每个头在看谁
 ```
 
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。

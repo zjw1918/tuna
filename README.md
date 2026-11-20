@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e06          # 回到某一期的代码
+git checkout e07          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -28,6 +28,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E04 | 春天挨着秋天 | [B 站](https://www.bilibili.com/video/BV1mTsB6EE4B) | `lessons/e04_mlp.py`（词嵌入 + MLP，在全唐诗上训练）、`lessons/common.py`（取数据、训练循环、生成） |
 | E05 | 注意力该看谁 | [B 站](https://www.bilibili.com/video/BV1Qfsq69ENU) | `lessons/e05_attention.py`（四个头的注意力：查询、标签、内容，因果掩码，位置表） |
 | E06 | 一层层盖上去 | [B 站](https://www.bilibili.com/video/BV1HZsi6qE7P) | `tuna/model.py`（整个 Tuna：RMSNorm、RoPE、GQA 注意力、SwiGLU、残差、共用词表、top-k 生成）、`lessons/e06_transformer.py`（小号 Tuna 写诗 + 拆零件实验） |
+| E07 | 给它找书 | [B 站](https://www.bilibili.com/video/BV1CWypzcE54) | `scripts/prepare_pretrain.py`（把 8.3 GB 语料切成一卷 uint16 的 token 磁带）、`lessons/e07_data.py`（查重、两个脏数据实验、memmap） |
 
 ## 跑起来
 
@@ -81,6 +82,17 @@ uv run python lessons/e05_attention.py ~/tuna-data/texts/tang.txt tokenizer/toke
 uv run python lessons/e06_transformer.py ~/tuna-data/texts/tang.txt tokenizer/tokenizer.json ~/tuna-runs/e06
 # 小号 Tuna（6 层、384 宽）训 2,500 步（约 2 分钟）写几首诗；再各训一个拆掉 RoPE、残差、RMSNorm 的版本（四个一共七分多钟）
 # 试试把 e06_transformer.py 里 n_layers=6 改成 2 或 12，看看七言开头还接不接得上七个字
+```
+
+### E07 · 给它找书
+
+```sh
+uv run python lessons/get_texts.py ~/tuna-data/texts            # 重跑一次：多存一份 tang.v1.txt（不清洗、带校勘注的第一版）
+uv run python scripts/prepare_pretrain.py ~/tuna-data/pretrain_t2t.jsonl tokenizer/tokenizer.json ~/tuna-data/pretrain
+# 切成 20 亿个 token，存成 4 GB 的 train.bin + val.bin（约 7 分半）
+uv run python lessons/e07_data.py ~/tuna-data/pretrain_t2t.jsonl ~/tuna-data/pretrain/train.bin ~/tuna-data/texts tokenizer/tokenizer.json ~/tuna-runs/e07
+# 翻一遍语料（重复、太短、乱码），两个脏数据实验（三个小号 Tuna，每个约 2 分钟），最后量 memmap 有多快
+# 试试把 e07_data.py 里复制的遍数从 2,000 改成 200，它还背得出来吗？
 ```
 
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。

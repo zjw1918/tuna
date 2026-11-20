@@ -1,8 +1,9 @@
-"""第 1–6 期的小语料：《西游记》（公版，Project Gutenberg #23962）和全唐诗（chinese-poetry，MIT）。
+"""第 1–7 期的小语料：《西游记》（公版，Project Gutenberg #23962）和全唐诗（chinese-poetry，MIT）。
 都转成简体，存成纯文本。
 
 用法：python lessons/get_texts.py <输出目录>
-输出：xiyouji.txt（正文，一回一段）、tang.txt（一行一首：标题｜作者｜正文）
+输出：xiyouji.txt（正文，一回一段）、tang.txt（一行一首：标题｜作者｜正文）、
+      tang.v1.txt（不清洗的第一版，还带着校勘注，第 7 期做脏数据实验用）
 """
 import json, os, re, sys, urllib.request
 
@@ -53,14 +54,18 @@ def clean_poem(body):
 
 
 def tang(out):
-    rows = []
+    rows, raw = [], []
     for i in range(0, 58000, 1000):                   # 一共 58 个文件，每个 1000 首
         poems = json.loads(fetch_any([u.format(i) for u in POETRY]))
         for p in poems:
-            body = clean_poem("".join(p.get("paragraphs", [])))
+            text = "".join(p.get("paragraphs", []))
+            if text:
+                raw.append(t2s.convert(f"{p['title']}｜{p['author']}｜{text}"))
+            body = clean_poem(text)
             if body:
                 rows.append(t2s.convert(f"{p['title']}｜{p['author']}｜{body}"))
     open(os.path.join(out, "tang.txt"), "w").write("\n".join(rows))
+    open(os.path.join(out, "tang.v1.txt"), "w").write("\n".join(raw))
     print(f"全唐诗：{len(rows):,} 首")
 
 

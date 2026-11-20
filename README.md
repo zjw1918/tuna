@@ -25,7 +25,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E01 | 猜下一个字 | [B 站](https://www.bilibili.com/video/BV15tsm6dEvZ) | `lessons/get_texts.py`（下载课本）、`lessons/e01_bigram.py` |
 | E02 | 机器是怎么“学”的 | [B 站](https://www.bilibili.com/video/BV1zMs861ERr) | `lessons/e02_autograd.py`（四十行自动求导 + PyTorch 学出 E01 的表） |
 | E03 | 给语言切积木 | [B 站](https://www.bilibili.com/video/BV1aTsh6KETc) | `lessons/e03_bpe.py`（手写字节级 BPE）、`scripts/train_tokenizer.py`、`tokenizer/tokenizer.json`（成品词表） |
-| E04 | 春天挨着秋天 | 即将上线 | `lessons/e04_mlp.py`（词嵌入 + MLP，在全唐诗上训练）、`lessons/common.py`（取数据、训练循环、生成） |
+| E04 | 春天挨着秋天 | [B 站](https://www.bilibili.com/video/BV1mTsB6EE4B) | `lessons/e04_mlp.py`（词嵌入 + MLP，在全唐诗上训练）、`lessons/common.py`（取数据、训练循环、生成） |
 
 ## 跑起来
 

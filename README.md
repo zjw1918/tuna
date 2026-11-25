@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e07          # 回到某一期的代码
+git checkout e08          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -29,7 +29,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E05 | 注意力该看谁 | [B 站](https://www.bilibili.com/video/BV1Qfsq69ENU) | `lessons/e05_attention.py`（四个头的注意力：查询、标签、内容，因果掩码，位置表） |
 | E06 | 一层层盖上去 | [B 站](https://www.bilibili.com/video/BV1HZsi6qE7P) | `tuna/model.py`（整个 Tuna：RMSNorm、RoPE、GQA 注意力、SwiGLU、残差、共用词表、top-k 生成）、`lessons/e06_transformer.py`（小号 Tuna 写诗 + 拆零件实验） |
 | E07 | 给它找书 | [B 站](https://www.bilibili.com/video/BV1CWypzcE54) | `scripts/prepare_pretrain.py`（把 8.3 GB 语料切成一卷 uint16 的 token 磁带）、`lessons/e07_data.py`（查重、两个脏数据实验、memmap） |
-| 特别篇 | 小模型的突围 | [B 站](https://www.bilibili.com/video/BV14jyizVE8S) | 本期没有新代码（小模型和大模型的对比实验只在视频里展示） |
+| E08 | 一夜长大 | 即将上线 | `scripts/train.py`（预训练：bf16、torch.compile、梯度累积、AdamW + 预热余弦、梯度裁剪、困惑度、JSON 日志）、`tuna/model.py` 加 `save` / `load` |
 
 ## 跑起来
 
@@ -96,6 +96,15 @@ uv run python lessons/e07_data.py ~/tuna-data/pretrain_t2t.jsonl ~/tuna-data/pre
 # 试试把 e07_data.py 里复制的遍数从 2,000 改成 200，它还背得出来吗？
 ```
 
+### E08 · 一夜长大
+
+```sh
+uv run python scripts/train.py --data ~/tuna-data/pretrain --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/pretrain
+# 一晚上：12 亿 token、36,621 步（原厂 RTX 3070 约 5 小时，显存约 3.4 GB），每 500 步考一次，最后存下 tuna-base.pt；断了加 --resume 接着跑
+uv run python scripts/train.py --data ~/tuna-data/pretrain --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/nowarm --tokens 3276800 --accum 1 --warmup 0 --eval_every 50 --no_compile
+# 试试关掉预热跑 400 步，和片里的 6.10 对一对（每步 16 段 × 512，和正式训练的 64 段不同）
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
 
 Hugging Face 连不上时，先设镜像再跑 `hf download`：
@@ -104,6 +113,21 @@ Hugging Face 连不上时，先设镜像再跑 `hf download`：
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
+## 训好的模型
+
+等不及自己通宵训练，可以直接下载我们训好的权重（GitHub Releases），接着往后做：
+
+**`tuna-base.pt`**（223 MB）：E08 那一晚训出的基座模型（5,572 万参数，36,621 步，验证 loss 2.088）。
+
+```sh
+mkdir -p ~/tuna-runs/pretrain
+curl -L -o ~/tuna-runs/pretrain/tuna-base.pt https://github.com/zjw1918/tuna/releases/download/e08/tuna-base.pt
+sha256sum ~/tuna-runs/pretrain/tuna-base.pt   # afb03dc5…304e4d45
+uv run python -c "import sys; from tuna.model import load; m, ck = load(sys.argv[1]); print(ck['step'], m.num_params())" ~/tuna-runs/pretrain/tuna-base.pt
+```
+
+GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同样的位置。
+
 ## 致谢
 
 《西游记》来自 Project Gutenberg（公版），全唐诗来自 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT）。
@@ -111,3 +135,5 @@ export HF_ENDPOINT=https://hf-mirror.com
 ## 许可
 
 代码：Apache-2.0（见 `LICENSE`）。
+
+训好的权重：[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)，不可商用（训练数据里有 CC BY-NC 成分）。

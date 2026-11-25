@@ -2,7 +2,7 @@
 
 结构：词嵌入 → 12 个 Transformer 块（RMSNorm、带 RoPE 的分组查询注意力、SwiGLU）→ RMSNorm → 输出层（和词嵌入共享权重）。
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 import torch
 import torch.nn as nn
@@ -144,6 +144,18 @@ class Tuna(nn.Module):
             if eos_id is not None and (nxt == eos_id).all():
                 break
         return out
+
+
+def save(model: Tuna, path, **extra):
+    torch.save({"config": asdict(model.cfg), "model": model.state_dict(), **extra}, path)
+
+
+def load(path, device="cuda"):
+    ck = torch.load(path, map_location=device, weights_only=False)
+    model = Tuna(TunaConfig(**ck["config"])).to(device)
+    sd = {k.removeprefix("_orig_mod."): v for k, v in ck["model"].items()}
+    model.load_state_dict(sd)
+    return model, ck
 
 
 if __name__ == "__main__":

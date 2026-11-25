@@ -52,14 +52,21 @@ class Attention(nn.Module):
         self.wv = nn.Linear(cfg.dim, cfg.n_kv_heads * hd, bias=False)
         self.wo = nn.Linear(cfg.n_heads * hd, cfg.dim, bias=False)
 
-    def forward(self, x, cos, sin):
+    def forward(self, x, cos, sin, cache=None):
         B, T, _ = x.shape
         hd = self.cfg.head_dim
         q = self.wq(x).view(B, T, self.cfg.n_heads, hd).transpose(1, 2)
         k = self.wk(x).view(B, T, self.cfg.n_kv_heads, hd).transpose(1, 2)
         v = self.wv(x).view(B, T, self.cfg.n_kv_heads, hd).transpose(1, 2)
         q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
-        out = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=True)
+        if cache is not None:                     # 生成时：把旧的 K、V 接在前面
+            if "k" in cache:
+                k = torch.cat([cache["k"], k], dim=2)
+                v = torch.cat([cache["v"], v], dim=2)
+            cache["k"], cache["v"] = k, v
+        # 只有一次处理多个新 token 时才需要因果掩码
+        out = F.scaled_dot_product_attention(q, k, v, is_causal=T > 1,
+                                             enable_gqa=True)
         return self.wo(out.transpose(1, 2).reshape(B, T, -1))
 
 
@@ -83,8 +90,8 @@ class Block(nn.Module):
         self.ffn_norm = nn.RMSNorm(cfg.dim, eps=cfg.norm_eps)
         self.ffn = FeedForward(cfg)
 
-    def forward(self, x, cos, sin):
-        x = x + self.attn(self.attn_norm(x), cos, sin)   # 残差：在原来的基础上"加一点"
+    def forward(self, x, cos, sin, cache=None):
+        x = x + self.attn(self.attn_norm(x), cos, sin, cache)   # 残差：在原来的基础上"加一点"
         return x + self.ffn(self.ffn_norm(x))
 
 
@@ -110,13 +117,13 @@ class Tuna(nn.Module):
         if isinstance(m, (nn.Linear, nn.Embedding)):
             nn.init.normal_(m.weight, std=0.02)
 
-    def forward(self, tokens, targets=None):
+    def forward(self, tokens, targets=None, caches=None, start=0):
         """tokens: [B, T]。"""
         x = self.embed(tokens)
         T = x.shape[1]
-        cos, sin = self.rope_cos[:T], self.rope_sin[:T]
-        for layer in self.layers:
-            x = layer(x, cos, sin)
+        cos, sin = self.rope_cos[start:start + T], self.rope_sin[start:start + T]
+        for i, layer in enumerate(self.layers):
+            x = layer(x, cos, sin, None if caches is None else caches[i])
         logits = self.output(self.norm(x))
         if targets is None:
             return logits
@@ -127,23 +134,44 @@ class Tuna(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
     @torch.no_grad()
-    def generate(self, tokens, max_new=200, temperature=0.8, top_k=50, eos_id=None):
-        """一个字一个字往后猜：每次把整段话重新算一遍，只取最后一个位置的预测。"""
+    def generate(self, tokens, max_new=200, temperature=0.8, top_k=50, top_p=0.95,
+                 eos_id=None, repetition_penalty=1.0):
+        """一个字一个字往后猜。带 KV 缓存：旧 token 的 K、V 只算一次。"""
         self.eval()
+        caches = [{} for _ in self.layers]
+        logits = self(tokens, caches=caches)[:, -1]
+        pos = tokens.shape[1]
         out = tokens
         for _ in range(max_new):
-            logits = self(out[:, -self.cfg.max_seq_len:])[:, -1].float()
-            if temperature <= 0:
-                nxt = logits.argmax(-1, keepdim=True)
-            else:
-                logits = logits / temperature
-                kth = torch.topk(logits, top_k).values[:, -1:]          # 只在最像的 k 个字里抽
-                logits = logits.masked_fill(logits < kth, float("-inf"))
-                nxt = torch.multinomial(F.softmax(logits, dim=-1), 1)
+            if pos >= self.cfg.max_seq_len:
+                break
+            if repetition_penalty != 1.0:
+                seen = logits.gather(1, out)
+                logits = logits.scatter(1, out, torch.where(seen > 0, seen / repetition_penalty,
+                                                            seen * repetition_penalty))
+            nxt = sample(logits, temperature, top_k, top_p)
             out = torch.cat([out, nxt], dim=1)
             if eos_id is not None and (nxt == eos_id).all():
                 break
+            logits = self(nxt, caches=caches, start=pos)[:, -1]
+            pos += 1
         return out
+
+
+def sample(logits, temperature=0.8, top_k=50, top_p=0.95):
+    if temperature <= 0:
+        return logits.argmax(-1, keepdim=True)
+    logits = logits.float() / temperature
+    if top_k:
+        kth = torch.topk(logits, top_k).values[:, -1:]
+        logits = logits.masked_fill(logits < kth, float("-inf"))
+    probs = F.softmax(logits, dim=-1)
+    if top_p < 1.0:
+        sp, idx = probs.sort(descending=True)
+        drop = sp.cumsum(-1) - sp > top_p
+        sp = sp.masked_fill(drop, 0)
+        probs = torch.zeros_like(probs).scatter(1, idx, sp)
+    return torch.multinomial(probs, 1)
 
 
 def save(model: Tuna, path, **extra):

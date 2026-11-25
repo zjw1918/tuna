@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e08          # 回到某一期的代码
+git checkout e09          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -30,6 +30,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E06 | 一层层盖上去 | [B 站](https://www.bilibili.com/video/BV1HZsi6qE7P) | `tuna/model.py`（整个 Tuna：RMSNorm、RoPE、GQA 注意力、SwiGLU、残差、共用词表、top-k 生成）、`lessons/e06_transformer.py`（小号 Tuna 写诗 + 拆零件实验） |
 | E07 | 给它找书 | [B 站](https://www.bilibili.com/video/BV1CWypzcE54) | `scripts/prepare_pretrain.py`（把 8.3 GB 语料切成一卷 uint16 的 token 磁带）、`lessons/e07_data.py`（查重、两个脏数据实验、memmap） |
 | E08 | 一夜长大 | [B 站](https://www.bilibili.com/video/BV1b7yBznEck) | `scripts/train.py`（预训练：bf16、torch.compile、梯度累积、AdamW + 预热余弦、梯度裁剪、困惑度、JSON 日志）、`tuna/model.py` 加 `save` / `load` |
+| E09 | 说话的艺术 | 即将上线 | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
 
 ## 跑起来
 
@@ -103,6 +104,14 @@ uv run python scripts/train.py --data ~/tuna-data/pretrain --tokenizer tokenizer
 # 一晚上：12 亿 token、36,621 步（原厂 RTX 3070 约 5 小时，显存约 3.4 GB），每 500 步考一次，最后存下 tuna-base.pt；断了加 --resume 接着跑
 uv run python scripts/train.py --data ~/tuna-data/pretrain --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/nowarm --tokens 3276800 --accum 1 --warmup 0 --eval_every 50 --no_compile
 # 试试关掉预热跑 400 步，和片里的 6.10 对一对（每步 16 段 × 512，和正式训练的 64 段不同）
+```
+
+### E09 · 说话的艺术
+
+```sh
+uv run python lessons/e09_sampling.py ~/tuna-runs/pretrain/tuna-base.pt tokenizer/tokenizer.json ~/tuna-runs/e09
+# 同一个开头四种挑法（贪心、温度 0.8 + top-k、温度 2、top-p + 重复惩罚），再比有没有 KV 缓存的速度：显卡 1 条、16 条、CPU（约 1 分钟）
+# 试试把 e09_sampling.py 第 39 行的 repetition_penalty=1.2 改成 2.0，它还敢用「的」吗？
 ```
 
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。

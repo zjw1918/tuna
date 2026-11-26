@@ -31,7 +31,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E07 | 给它找书 | [B 站](https://www.bilibili.com/video/BV1CWypzcE54) | `scripts/prepare_pretrain.py`（把 8.3 GB 语料切成一卷 uint16 的 token 磁带）、`lessons/e07_data.py`（查重、两个脏数据实验、memmap） |
 | E08 | 一夜长大 | [B 站](https://www.bilibili.com/video/BV1b7yBznEck) | `scripts/train.py`（预训练：bf16、torch.compile、梯度累积、AdamW + 预热余弦、梯度裁剪、困惑度、JSON 日志）、`tuna/model.py` 加 `save` / `load` |
 | E09 | 说话的艺术 | [B 站](https://www.bilibili.com/video/BV15Sy6zTE2r) | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
-| E10 | 学会聊天 | 即将上线 | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
+| E10 | 学会聊天 | [B 站](https://www.bilibili.com/video/BV1HUy2zwERQ) | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
 
 ## 跑起来
 
@@ -155,7 +155,7 @@ uv run python -c "import sys; from tuna.model import load; m, ck = load(sys.argv
 ```sh
 mkdir -p ~/tuna-runs/sft-5e-5
 curl -L -o ~/tuna-runs/sft-5e-5/tuna-chat.pt https://github.com/zjw1918/tuna/releases/download/e10/tuna-chat.pt
-sha256sum ~/tuna-runs/sft-5e-5/tuna-chat.pt   # 522be615…7b68426c
+sha256sum ~/tuna-runs/sft-5e-5/tuna-chat.pt   # 5471d9c3…67ddd94cb
 ```
 
 GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同样的位置。

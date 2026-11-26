@@ -32,7 +32,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E08 | 一夜长大 | [B 站](https://www.bilibili.com/video/BV1b7yBznEck) | `scripts/train.py`（预训练：bf16、torch.compile、梯度累积、AdamW + 预热余弦、梯度裁剪、困惑度、JSON 日志）、`tuna/model.py` 加 `save` / `load` |
 | E09 | 说话的艺术 | [B 站](https://www.bilibili.com/video/BV15Sy6zTE2r) | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
 | E10 | 学会聊天 | [B 站](https://www.bilibili.com/video/BV1HUy2zwERQ) | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
-| E11 | 会写诗了 | 即将上线 | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
+| E11 | 会写诗了 | [B 站](https://www.bilibili.com/video/BV1SvyUzUEM8) | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
 
 ## 跑起来
 

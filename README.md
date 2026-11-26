@@ -33,7 +33,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E09 | 说话的艺术 | [B 站](https://www.bilibili.com/video/BV15Sy6zTE2r) | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
 | E10 | 学会聊天 | [B 站](https://www.bilibili.com/video/BV1HUy2zwERQ) | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
 | E11 | 会写诗了 | [B 站](https://www.bilibili.com/video/BV1SvyUzUEM8) | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
-| E12 | 机器怎么看图 | 即将上线 | `lessons/e12_vit.py`（涂鸦切成 49 个图块，从零训一个小 ViT，再拿真照片考它）、`lessons/e12_draw.py`（浏览器里你画它猜）、`tuna/model.py`（`causal` 开关）、`photos/`（6 张 CC0 测试照片） |
+| E12 | 机器怎么看图 | [B 站](https://www.bilibili.com/video/BV1kc1EzWEQi) | `lessons/e12_vit.py`（涂鸦切成 49 个图块，从零训一个小 ViT，再拿真照片考它）、`lessons/e12_draw.py`（浏览器里你画它猜）、`tuna/model.py`（`causal` 开关）、`photos/`（6 张 CC0 测试照片） |
 
 ## 跑起来
 

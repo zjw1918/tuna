@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e09          # 回到某一期的代码
+git checkout e10          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -31,6 +31,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E07 | 给它找书 | [B 站](https://www.bilibili.com/video/BV1CWypzcE54) | `scripts/prepare_pretrain.py`（把 8.3 GB 语料切成一卷 uint16 的 token 磁带）、`lessons/e07_data.py`（查重、两个脏数据实验、memmap） |
 | E08 | 一夜长大 | [B 站](https://www.bilibili.com/video/BV1b7yBznEck) | `scripts/train.py`（预训练：bf16、torch.compile、梯度累积、AdamW + 预热余弦、梯度裁剪、困惑度、JSON 日志）、`tuna/model.py` 加 `save` / `load` |
 | E09 | 说话的艺术 | [B 站](https://www.bilibili.com/video/BV15Sy6zTE2r) | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
+| E10 | 学会聊天 | 即将上线 | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
 
 ## 跑起来
 
@@ -114,6 +115,20 @@ uv run python lessons/e09_sampling.py ~/tuna-runs/pretrain/tuna-base.pt tokenize
 # 试试把 e09_sampling.py 第 39 行的 repetition_penalty=1.2 改成 2.0，它还敢用「的」吗？
 ```
 
+### E10 · 学会聊天
+
+```sh
+uv run hf download jingyaogong/minimind_dataset sft_t2t_mini.jsonl lora_identity.jsonl --repo-type dataset --local-dir ~/tuna-data/raw
+uv run python scripts/prepare_sft.py ~/tuna-data/raw/sft_t2t_mini.jsonl ~/tuna-data/raw/lora_identity.jsonl tokenizer/tokenizer.json ~/tuna-data/sft
+# 套模板、换上 Tuna 的自我介绍：806,715 段对话、约 3 亿 token（约 6 分钟）
+uv run python scripts/train_sft.py --base ~/tuna-runs/pretrain/tuna-base.pt --data ~/tuna-data/sft --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/sft-5e-5
+# 指令微调一遍（原厂 RTX 3070 约 1.8 小时），存下 tuna-chat.pt
+uv run python scripts/chat.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json
+# 和它聊天；问问「你是谁？」
+uv run python scripts/train_sft.py --base ~/tuna-runs/pretrain/tuna-base.pt --data ~/tuna-data/sft --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/e10/nomask --no_mask --epochs 0.04
+# 不加损失掩码训一小段（约 4 分钟）。chat.py 见到 im_end 就停：先把 tuna/infer.py 里 if nxt.item() == end: break 两行注释掉，再聊，看它会不会替你提问
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
 
 Hugging Face 连不上时，先设镜像再跑 `hf download`：
@@ -133,6 +148,14 @@ mkdir -p ~/tuna-runs/pretrain
 curl -L -o ~/tuna-runs/pretrain/tuna-base.pt https://github.com/zjw1918/tuna/releases/download/e08/tuna-base.pt
 sha256sum ~/tuna-runs/pretrain/tuna-base.pt   # afb03dc5…304e4d45
 uv run python -c "import sys; from tuna.model import load; m, ck = load(sys.argv[1]); print(ck['step'], m.num_params())" ~/tuna-runs/pretrain/tuna-base.pt
+```
+
+**`tuna-chat.pt`**（223 MB）：E10 指令微调后的聊天模型（学习率 5e-5，37,701 步）。
+
+```sh
+mkdir -p ~/tuna-runs/sft-5e-5
+curl -L -o ~/tuna-runs/sft-5e-5/tuna-chat.pt https://github.com/zjw1918/tuna/releases/download/e10/tuna-chat.pt
+sha256sum ~/tuna-runs/sft-5e-5/tuna-chat.pt   # 522be615…7b68426c
 ```
 
 GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同样的位置。

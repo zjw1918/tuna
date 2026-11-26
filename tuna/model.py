@@ -127,7 +127,8 @@ class Tuna(nn.Module):
         logits = self.output(self.norm(x))
         if targets is None:
             return logits
-        loss = F.cross_entropy(logits.float().view(-1, logits.size(-1)), targets.reshape(-1))
+        loss = F.cross_entropy(logits.float().view(-1, logits.size(-1)), targets.reshape(-1),
+                               ignore_index=-100)
         return logits, loss
 
     def num_params(self):

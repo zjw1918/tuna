@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e10          # 回到某一期的代码
+git checkout e11          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -32,6 +32,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E08 | 一夜长大 | [B 站](https://www.bilibili.com/video/BV1b7yBznEck) | `scripts/train.py`（预训练：bf16、torch.compile、梯度累积、AdamW + 预热余弦、梯度裁剪、困惑度、JSON 日志）、`tuna/model.py` 加 `save` / `load` |
 | E09 | 说话的艺术 | [B 站](https://www.bilibili.com/video/BV15Sy6zTE2r) | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
 | E10 | 学会聊天 | [B 站](https://www.bilibili.com/video/BV1HUy2zwERQ) | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
+| E11 | 会写诗了 | 即将上线 | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
 
 ## 跑起来
 
@@ -129,6 +130,23 @@ uv run python scripts/train_sft.py --base ~/tuna-runs/pretrain/tuna-base.pt --da
 # 不加损失掩码训一小段（约 4 分钟）。chat.py 见到 im_end 就停：先把 tuna/infer.py 里 if nxt.item() == end: break 两行注释掉，再聊，看它会不会替你提问
 ```
 
+### E11 · 会写诗了
+
+```sh
+uv run python scripts/eval.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json --val ~/tuna-data/pretrain
+# 成绩单（30 道题）+ 10 万个 token 的困惑度；加 --loose 是旧判法（整段找关键词），会被「十减四等于二十」骗过
+uv run python scripts/eval.py ~/tuna-runs/pretrain/tuna-base.pt tokenizer/tokenizer.json --base --val ~/tuna-data/pretrain
+# 基座模型也考一次（不套聊天模板）
+uv run python scripts/train_lora.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json ~/tuna-data/texts/tang.txt ~/tuna-runs/lora-r8
+# 训写诗卡带：主干冻住，只训 A、B（108 万个数，RTX 3070 约 96 秒），存下 poet-lora.pt；--r 1 / --r 32 换卡带宽度
+uv run python scripts/chat.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json --lora ~/tuna-runs/lora-r8/poet-lora.pt --ask "写一首关于闻笛的诗。"
+# 插上卡带写诗；再问它「中国的首都是哪里？」，看看翻车
+uv run python scripts/train_lora.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json ~/tuna-data/texts/tang.txt ~/tuna-runs/lora-mix --mix ~/tuna-data/sft
+# 修法：每首诗配一段普通对话一起训（约 6 分钟）
+uv run python scripts/eval.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json --lora ~/tuna-runs/lora-mix/poet-lora.pt --val ~/tuna-data/pretrain
+# 插着卡带再考一次成绩单
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
 
 Hugging Face 连不上时，先设镜像再跑 `hf download`：
@@ -156,6 +174,14 @@ uv run python -c "import sys; from tuna.model import load; m, ck = load(sys.argv
 mkdir -p ~/tuna-runs/sft-5e-5
 curl -L -o ~/tuna-runs/sft-5e-5/tuna-chat.pt https://github.com/zjw1918/tuna/releases/download/e10/tuna-chat.pt
 sha256sum ~/tuna-runs/sft-5e-5/tuna-chat.pt   # 5471d9c3…67ddd94cb
+```
+
+**`poet-lora.pt`**（4.1 MB）：E11 的写诗卡带（LoRA r = 8，只用诗训；插在上面的 tuna-chat.pt 上用）。
+
+```sh
+mkdir -p ~/tuna-runs/lora-r8
+curl -L -o ~/tuna-runs/lora-r8/poet-lora.pt https://github.com/zjw1918/tuna/releases/download/e11/poet-lora.pt
+sha256sum ~/tuna-runs/lora-r8/poet-lora.pt   # 37a42445…cab2a9a4
 ```
 
 GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同样的位置。

@@ -1,6 +1,6 @@
 """在终端里和 Tuna 聊天（一个字一个字地吐出来）。
 
-用法：python scripts/chat.py <tuna-chat.pt> <tokenizer.json> [--ask "问题"]
+用法：python scripts/chat.py <tuna-chat.pt> <tokenizer.json> [--lora <lora.pt>] [--ask "问题"]
 """
 import argparse, os, sys
 
@@ -16,11 +16,15 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("model")
     p.add_argument("tokenizer")
+    p.add_argument("--lora")
     p.add_argument("--ask")
     p.add_argument("--temperature", type=float, default=0.7)
     a = p.parse_args()
     tok = Tokenizer.from_file(a.tokenizer)
     model, _ = load(a.model)
+    if a.lora:                                     # E11：插上卡带
+        from tuna.lora import load_lora
+        load_lora(model, a.lora)
     model.eval()
     history = []
     while True:

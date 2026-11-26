@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e11          # 回到某一期的代码
+git checkout e12          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -33,6 +33,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E09 | 说话的艺术 | [B 站](https://www.bilibili.com/video/BV15Sy6zTE2r) | `tuna/model.py` 加 `sample()`（温度、top-k、top-p）、`generate()` 的重复惩罚和 KV 缓存、`lessons/e09_sampling.py`（四种挑法 + 缓存测速） |
 | E10 | 学会聊天 | [B 站](https://www.bilibili.com/video/BV1HUy2zwERQ) | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
 | E11 | 会写诗了 | [B 站](https://www.bilibili.com/video/BV1SvyUzUEM8) | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
+| E12 | 机器怎么看图 | 即将上线 | `lessons/e12_vit.py`（涂鸦切成 49 个图块，从零训一个小 ViT，再拿真照片考它）、`lessons/e12_draw.py`（浏览器里你画它猜）、`tuna/model.py`（`causal` 开关）、`photos/`（6 张 CC0 测试照片） |
 
 ## 跑起来
 
@@ -147,6 +148,15 @@ uv run python scripts/eval.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokeni
 # 插着卡带再考一次成绩单
 ```
 
+### E12 · 机器怎么看图
+
+```sh
+uv run python lessons/e12_vit.py ~/tuna-data/quickdraw ~/tuna-runs/e12 photos/bicycle.jpg photos/house.jpg photos/fish.jpg photos/cat.jpg photos/apple.jpg photos/tree.jpg
+# 先自动下载 10 类 Quick, Draw! 涂鸦，训 3,000 步（RTX 3070 约 92 秒），最后拿 6 张真照片考它（自行车 → 太阳？）
+uv run python lessons/e12_draw.py ~/tuna-runs/e12/doodle-vit.pt
+# 浏览器打开 http://localhost:8001 ，画个太阳，看它中途把圆圈认成什么
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
 
 Hugging Face 连不上时，先设镜像再跑 `hf download`：
@@ -188,7 +198,7 @@ GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同�
 
 ## 致谢
 
-《西游记》来自 Project Gutenberg（公版），全唐诗来自 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT）。
+《西游记》来自 Project Gutenberg（公版），全唐诗来自 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT）。涂鸦来自 Google [Quick, Draw!](https://github.com/googlecreativelab/quickdraw-dataset)（CC BY 4.0），测试照片来自 Wikimedia Commons（CC0，见 `photos/CREDITS.md`）。
 
 ## 许可
 

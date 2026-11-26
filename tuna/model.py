@@ -20,6 +20,7 @@ class TunaConfig:
     max_seq_len: int = 1024
     rope_theta: float = 10000.0
     norm_eps: float = 1e-5
+    causal: bool = True     # 语言模型只许看前面；看图的 ViT 可以前后都看
 
     @property
     def head_dim(self):
@@ -65,7 +66,7 @@ class Attention(nn.Module):
                 v = torch.cat([cache["v"], v], dim=2)
             cache["k"], cache["v"] = k, v
         # 只有一次处理多个新 token 时才需要因果掩码
-        out = F.scaled_dot_product_attention(q, k, v, is_causal=T > 1,
+        out = F.scaled_dot_product_attention(q, k, v, is_causal=self.cfg.causal and T > 1,
                                              enable_gqa=True)
         return self.wo(out.transpose(1, 2).reshape(B, T, -1))
 

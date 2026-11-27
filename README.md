@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e13          # 回到某一期的代码
+git checkout e14          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -35,6 +35,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E11 | 会写诗了 | [B 站](https://www.bilibili.com/video/BV1SvyUzUEM8) | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
 | E12 | 机器怎么看图 | [B 站](https://www.bilibili.com/video/BV1kc1EzWEQi) | `lessons/e12_vit.py`（涂鸦切成 49 个图块，从零训一个小 ViT，再拿真照片考它）、`lessons/e12_draw.py`（浏览器里你画它猜）、`tuna/model.py`（`causal` 开关）、`photos/`（6 张 CC0 测试照片） |
 | E13 | Tuna 睁眼了 | 即将上线 | `tuna/vlm.py`（借来的 SigLIP2 眼睛 + 翻译官投影层，图片词拼进句子）、`scripts/extract_features.py`（先把图片看一遍，存成特征）、`scripts/train_vlm.py`（两阶段训练）、`scripts/chat.py --image`（拿照片和它聊） |
+| E14 | 住进你的电脑 | 即将上线 | `tuna/quant.py`（int8 量化）、`lessons/e14_quant.py`（8 / 4 / 3 / 2 位对照）、`scripts/serve.py`（网页聊天，能拖图片）、`scripts/export_hf.py` + `scripts/to_gguf.py` + `export/Modelfile`（导出 → GGUF → Ollama）、`scripts/bench_serve.py`（很多人同时来） |
 
 ## 跑起来
 
@@ -174,6 +175,29 @@ uv run python scripts/chat.py ~/tuna-runs/vlm/stage2/tuna-v.pt tokenizer/tokeniz
 # 拿照片和它聊；换成 photos/apple.jpg，问问篮子里有几个苹果
 ```
 
+### E14 · 住进你的电脑
+
+```sh
+uv run python lessons/e14_quant.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json ~/tuna-data/pretrain
+# 压成 8 / 4 / 3 / 2 位各考一次：大小、困惑度、回答（约 15 秒）
+uv run python scripts/serve.py --chat ~/tuna-runs/sft-5e-5/tuna-chat.pt --vision ~/tuna-runs/vlm/stage2/tuna-v.pt --tokenizer tokenizer/tokenizer.json
+# 浏览器打开 http://localhost:8000 ：聊天、拖一张照片进去问（局域网里别的设备用这台机器的 IP）；加 --int8 用量化版
+uv run python scripts/export_hf.py ~/tuna-runs/sft-5e-5/tuna-chat.pt tokenizer/tokenizer.json ~/tuna-runs/hf
+# 导出成 Hugging Face 的 Llama 格式（改名字、重排 RoPE 的配对），自带一致性自检
+git clone https://github.com/ggml-org/llama.cpp ~/tuna-tools/llama.cpp
+(cd ~/tuna-tools/llama.cpp && uv venv && uv pip install -r requirements/requirements-convert_hf_to_gguf.txt)
+~/tuna-tools/llama.cpp/.venv/bin/python scripts/to_gguf.py ~/tuna-tools/llama.cpp ~/tuna-runs/hf export/tuna-q8_0.gguf q8_0
+# 转成 GGUF（q8_0，57 MB）；直接用 llama.cpp 的 convert_hf_to_gguf.py 会报不认识分词器
+# 先装好 Ollama（https://ollama.com/download）
+ollama create tuna -f export/Modelfile
+ollama run tuna --verbose 给我讲一个关于小鱼的故事。
+# 很多人同时来：先让 Ollama 开 32 个座位（另开终端：OLLAMA_NUM_PARALLEL=32 ollama serve），再测 1 / 8 / 32 人
+uv run python scripts/bench_serve.py http://localhost:11434 tuna ~/tuna-runs/ollama-bench.json
+# vLLM 放在单独的环境里（实测 0.34.0），读刚才导出的 HF 格式；测之前先停掉 Ollama，两个别同时占显存
+uvx --from vllm==0.34.0 vllm serve ~/tuna-runs/hf --served-model-name tuna --dtype bfloat16 --max-model-len 1024 --gpu-memory-utilization 0.55 --port 8100
+uv run python scripts/bench_serve.py http://localhost:8100 tuna ~/tuna-runs/vllm-bench.json
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
 
 Hugging Face 连不上时，先设镜像再跑 `hf download`：
@@ -217,6 +241,13 @@ sha256sum ~/tuna-runs/lora-r8/poet-lora.pt   # 37a42445…cab2a9a4
 mkdir -p ~/tuna-runs/vlm/stage2
 curl -L -o ~/tuna-runs/vlm/stage2/tuna-v.pt https://github.com/zjw1918/tuna/releases/download/e13/tuna-v.pt
 sha256sum ~/tuna-runs/vlm/stage2/tuna-v.pt   # e23b31e2…3e6a4c666a
+```
+
+**`tuna-q8_0.gguf`**（57 MB）：E14 导出的对话模型 GGUF（q8_0），放进 `export/` 就能直接 `ollama create tuna -f export/Modelfile`。
+
+```sh
+curl -L -o export/tuna-q8_0.gguf https://github.com/zjw1918/tuna/releases/download/e14/tuna-q8_0.gguf
+sha256sum export/tuna-q8_0.gguf   # 4f5873b5…7b062b7db1
 ```
 
 GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同样的位置。

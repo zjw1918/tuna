@@ -118,9 +118,9 @@ class Tuna(nn.Module):
         if isinstance(m, (nn.Linear, nn.Embedding)):
             nn.init.normal_(m.weight, std=0.02)
 
-    def forward(self, tokens, targets=None, caches=None, start=0):
-        """tokens: [B, T]。"""
-        x = self.embed(tokens)
+    def forward(self, tokens, targets=None, caches=None, start=0, embeds=None):
+        """tokens: [B, T]。embeds 可直接传入向量（多模态时把图片向量拼进来）。"""
+        x = self.embed(tokens) if embeds is None else embeds
         T = x.shape[1]
         cos, sin = self.rope_cos[start:start + T], self.rope_sin[start:start + T]
         for i, layer in enumerate(self.layers):

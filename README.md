@@ -5,7 +5,7 @@
 ```sh
 git clone https://github.com/zjw1918/tuna && cd tuna
 git pull                 # 新的一期出来以后
-git checkout e12          # 回到某一期的代码
+git checkout e13          # 回到某一期的代码
 ```
 
 **硬件：** 一块 NVIDIA 显卡（实测 RTX 3070 8 GB）+ Linux。只要装好显卡驱动，不用另装 CUDA。
@@ -34,6 +34,7 @@ nvidia-smi && uv run python -c "import torch; print(torch.cuda.is_available())"
 | E10 | 学会聊天 | [B 站](https://www.bilibili.com/video/BV1HUy2zwERQ) | `scripts/prepare_sft.py`（聊天模板 + 损失掩码，把 80 万段对话切成训练样本）、`scripts/train_sft.py`（指令微调）、`tuna/infer.py`（模板、流式生成）、`scripts/chat.py`（终端聊天） |
 | E11 | 会写诗了 | [B 站](https://www.bilibili.com/video/BV1SvyUzUEM8) | `data/exam.jsonl` + `scripts/eval.py`（30 道题的成绩单、困惑度）、`tuna/lora.py`（LoRA：A、B 两条细矩阵，load_lora 插卡带）、`scripts/train_lora.py`（训写诗卡带）、`scripts/chat.py --lora` |
 | E12 | 机器怎么看图 | [B 站](https://www.bilibili.com/video/BV1kc1EzWEQi) | `lessons/e12_vit.py`（涂鸦切成 49 个图块，从零训一个小 ViT，再拿真照片考它）、`lessons/e12_draw.py`（浏览器里你画它猜）、`tuna/model.py`（`causal` 开关）、`photos/`（6 张 CC0 测试照片） |
+| E13 | Tuna 睁眼了 | 即将上线 | `tuna/vlm.py`（借来的 SigLIP2 眼睛 + 翻译官投影层，图片词拼进句子）、`scripts/extract_features.py`（先把图片看一遍，存成特征）、`scripts/train_vlm.py`（两阶段训练）、`scripts/chat.py --image`（拿照片和它聊） |
 
 ## 跑起来
 
@@ -157,6 +158,22 @@ uv run python lessons/e12_draw.py ~/tuna-runs/e12/doodle-vit.pt
 # 浏览器打开 http://localhost:8001 ，画个太阳，看它中途把圆圈认成什么
 ```
 
+### E13 · Tuna 睁眼了
+
+```sh
+uv run hf download jingyaogong/minimind-v_dataset pretrain_i2t.parquet sft_i2t.parquet --repo-type dataset --local-dir ~/tuna-data/raw-v
+# 图文数据：图文描述 4.3 GB + 图文指令 4.9 GB
+uv run python scripts/extract_features.py ~/tuna-data/raw-v/pretrain_i2t.parquet ~/tuna-data/vfeat/cap 100000
+uv run python scripts/extract_features.py ~/tuna-data/raw-v/sft_i2t.parquet ~/tuna-data/vfeat/sft 60000
+# 冻住的眼睛先把图片看一遍：每张 64 个图片词（第一次会下载 SigLIP2；两份约 9 分钟，特征约 15 GB）
+uv run python scripts/train_vlm.py --stage 1 --llm ~/tuna-runs/sft-5e-5/tuna-chat.pt --data ~/tuna-data/vfeat/cap --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/vlm/stage1
+# 第一阶段：Tuna 和眼睛都冻住，只训翻译官（90 万个旋钮，约 10 分钟）
+uv run python scripts/train_vlm.py --stage 2 --init ~/tuna-runs/vlm/stage1/tuna-v.pt --data ~/tuna-data/vfeat/sft --tokenizer tokenizer/tokenizer.json --out ~/tuna-runs/vlm/stage2
+# 第二阶段：整个模型一起学回答图片问题（约 6 分钟），存下 tuna-v.pt
+uv run python scripts/chat.py ~/tuna-runs/vlm/stage2/tuna-v.pt tokenizer/tokenizer.json --image photos/cat.jpg --temperature 0.5
+# 拿照片和它聊；换成 photos/apple.jpg，问问篮子里有几个苹果
+```
+
 下载慢或连不上：《西游记》和全唐诗的下载脚本自带备用地址（Gutenberg 镜像、jsDelivr），会自动换。
 
 Hugging Face 连不上时，先设镜像再跑 `hf download`：
@@ -194,11 +211,19 @@ curl -L -o ~/tuna-runs/lora-r8/poet-lora.pt https://github.com/zjw1918/tuna/rele
 sha256sum ~/tuna-runs/lora-r8/poet-lora.pt   # 37a42445…cab2a9a4
 ```
 
+**`tuna-v.pt`**（227 MB）：E13 两阶段训完的看图模型 Tuna-V（不含眼睛：SigLIP2 第一次用时自动从 Hugging Face 下载）。
+
+```sh
+mkdir -p ~/tuna-runs/vlm/stage2
+curl -L -o ~/tuna-runs/vlm/stage2/tuna-v.pt https://github.com/zjw1918/tuna/releases/download/e13/tuna-v.pt
+sha256sum ~/tuna-runs/vlm/stage2/tuna-v.pt   # e23b31e2…3e6a4c666a
+```
+
 GitHub 下载慢时，可以先在浏览器里打开链接下载，再放到同样的位置。
 
 ## 致谢
 
-《西游记》来自 Project Gutenberg（公版），全唐诗来自 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT）。涂鸦来自 Google [Quick, Draw!](https://github.com/googlecreativelab/quickdraw-dataset)（CC BY 4.0），测试照片来自 Wikimedia Commons（CC0，见 `photos/CREDITS.md`）。
+《西游记》来自 Project Gutenberg（公版），全唐诗来自 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT）。涂鸦来自 Google [Quick, Draw!](https://github.com/googlecreativelab/quickdraw-dataset)（CC BY 4.0），测试照片来自 Wikimedia Commons（CC0，见 `photos/CREDITS.md`）。图文数据来自 [MiniMind-V](https://github.com/jingyaogong/minimind-v)（ALLaVA-4V），视觉编码器是 Google 的 [SigLIP2](https://huggingface.co/google/siglip2-base-patch16-256)（Apache-2.0）。
 
 ## 许可
 
